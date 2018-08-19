@@ -1,0 +1,19 @@
+{
+	"commentStamp" : "sac 1/23/2002 19:41",
+	"super" : "Collection",
+	"category" : "SkipLists",
+	"classinstvars" : [ ],
+	"pools" : [ ],
+	"classvars" : [
+		"Rand"
+	],
+	"instvars" : [
+		"sortBlock",
+		"pointers",
+		"numElements",
+		"level",
+		"splice"
+	],
+	"name" : "SkipList",
+	"type" : "normal"
+}

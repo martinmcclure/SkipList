@@ -1,0 +1,13 @@
+{
+	"commentStamp" : "",
+	"super" : "BaselineOf",
+	"category" : "BaselineOfSkipList",
+	"classinstvars" : [ ],
+	"pools" : [ ],
+	"classvars" : [
+		"LastVersionLoad"
+	],
+	"instvars" : [ ],
+	"name" : "BaselineOfSkipList",
+	"type" : "normal"
+}
