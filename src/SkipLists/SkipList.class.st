@@ -106,43 +106,34 @@ SkipList >> associationAt: aKey ifAbsent: aBlock [
 	^ node
 ]
 
-{ #category : 'dictionary api' }
+{ #category : 'dictionary searching' }
 SkipList >> associationAtOrAfter: aKey [
-	"Answer the first entry with a key > aKey"
+	"Answer the first node with a key >= aKey"
 
-	| node forward |
-	node := self.
-	level to: 1 by: -1 do: [ :i |
-		[
-		forward := node forward: i.
-		self is: forward before: aKey ] whileTrue: [ node := forward ] ].
-	"At this point: node < element <= forward"
-	node := node next.
+	^ self
+		  associationAtOrAfter: aKey
+		  ifAbsent: [ self errorKeyNotFound: aKey ]
+]
+
+{ #category : 'dictionary searching' }
+SkipList >> associationAtOrAfter: aKey ifAbsent: aBlock [
+	"Answer the first node with a key >= aKey.
+	If none, answer the result of evaluating aBlock"
+
+	| node |
+	node := self searchAtOrAfter: aKey updating: nil.
+	node ifNil: [ ^ aBlock value ].
 	^ node
 ]
 
-{ #category : 'dictionary api' }
-SkipList >> associationAtOrAfter: aKey ifAbsent: aBlock [
-	"Answer the first entry with a key >= aKey"
-
-	| node forward |
-	node := self.
-	level to: 1 by: -1 do: [ :i |
-		[
-		forward := node forward: i.
-		self is: forward before: aKey ] whileTrue: [ node := forward ] ].
-	"At this point: node < element <= forward"
-	node := node next.
-	^ node ifNil: [ aBlock value ] ifNotNil: [ node ]
-]
-
-{ #category : 'dictionary api' }
+{ #category : 'dictionary searching' }
 SkipList >> associationBefore: aKey ifAbsent: aBlock [
 	"Answer the last entry whose key < aKey"
 
 	| node |
-	node := self searchBefore: aKey.
-	^ node ifNil: [ aBlock value ] ifNotNil: [ node ]
+	node := self searchBefore: aKey updating: nil.
+	node == self ifTrue: [ ^ aBlock value ].
+	^ node
 ]
 
 { #category : 'dictionary api' }
@@ -366,8 +357,9 @@ SkipList >> randomLevel [
 ]
 
 { #category : 'set api' }
-SkipList >> remove: aKey [ 
-	^ self remove: aKey ifAbsent: [self errorNotFound: aKey]
+SkipList >> remove: aKey [
+
+	^ self removeKey: aKey
 ]
 
 { #category : 'set api' }
@@ -387,7 +379,7 @@ SkipList >> removeAll [
 { #category : 'dictionary api' }
 SkipList >> removeKey: aKey [
 
-	^ self removeKey: aKey ifAbsent: [ self errorNotFound: aKey ]
+	^ self removeKey: aKey ifAbsent: [ self errorKeyNotFound: aKey ]
 ]
 
 { #category : 'dictionary api' }
@@ -425,26 +417,12 @@ SkipList >> searchAtOrAfter: aKey updating: anArray [
 
 	| node |
 	node := self searchBefore: aKey updating: anArray.
-	^ node ifNotNil: [ node next ]
-]
-
-{ #category : 'private' }
-SkipList >> searchBefore: aKey [
-	"Answer the last node whose key < aKey, nil if there is no such node"
-
-	| node forward |
-	node := self.
-	level to: 1 by: -1 do: [ :i |
-		[
-		forward := node forward: i.
-		self is: forward before: aKey ] whileTrue: [ node := forward ] ].
-	"At this point: node < aKey <= forward, if all non-nil"
-	^ node
+	^ node next
 ]
 
 { #category : 'private' }
 SkipList >> searchBefore: aKey updating: anArray [
-	"Answer the last node whose key < aKey, nil if there is no such node"
+	"Answer the last node whose key < aKey, self if there is no such node"
 
 	| node forward |
 	node := self.

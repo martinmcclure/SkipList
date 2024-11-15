@@ -7,9 +7,66 @@ Instance Variables: none
 Class {
 	#name : 'SkipListTest',
 	#superclass : 'ClassTestCase',
+	#instVars : [
+		's',
+		'd'
+	],
 	#category : 'SkipLists-Tests',
 	#package : 'SkipLists-Tests'
 }
+
+{ #category : 'support' }
+SkipListTest >> keyRange [
+	"The range of keys used in most tests"
+
+	^ self minKey to: self maxKey
+]
+
+{ #category : 'support' }
+SkipListTest >> makeSkipList [
+	"Create a random SkipList, and a matching Dictionary for use in a test."
+
+	| size |
+	size := (10 to: 100) atRandom.
+	s := SkipList new.
+	d := Dictionary new: size.
+	size timesRepeat: [
+		| key value |
+		[
+		key := self keyRange atRandom.
+		d includesKey: key ] whileTrue.
+		value := key printString.
+		d at: key put: value.
+		s at: key put: value ]
+]
+
+{ #category : 'support' }
+SkipListTest >> maxKey [
+	"The largest key used in most tests"
+
+	^ 10000
+]
+
+{ #category : 'support' }
+SkipListTest >> minKey [
+	"The smallest key used in most tests"
+
+	^ -10000
+]
+
+{ #category : 'support' }
+SkipListTest >> randomKeysDo: aBlock [
+	"Evaluate aBlock many times with random keys."
+
+	self maxKey timesRepeat: [ aBlock value: self keyRange atRandom ]
+]
+
+{ #category : 'support' }
+SkipListTest >> setUp [
+
+	super setUp.
+	self makeSkipList
+]
 
 { #category : 'implementationTests' }
 SkipListTest >> testAdd [
@@ -37,6 +94,39 @@ SkipListTest >> testAddIfPresent [
 		self assert: node value equals: 1.
 		s add: 2 ].
 	self assert: s size equals: 2
+]
+
+{ #category : 'public' }
+SkipListTest >> testAssociationAt [
+
+	d keysAndValuesDo: [ :k :v |
+		self assert: (s associationAt: k) equals: k -> v ].
+
+	self randomKeysDo: [ :k |
+		(d includesKey: k)
+			ifTrue: [
+			self assert: (s associationAt: k) equals: k -> k printString ]
+			ifFalse: [ self should: [ s associationAt: k ] raise: KeyNotFound ] ]
+]
+
+{ #category : 'public' }
+SkipListTest >> testAssociationAtIfAbsent [
+
+	d keysAndValuesDo: [ :k :v |
+		self
+			assert: (s associationAt: k ifAbsent: [ 'nevermore' ])
+			equals: k -> v ].
+
+	self randomKeysDo: [ :k |
+		(d includesKey: k)
+			ifTrue: [
+				self
+					assert: (s associationAt: k ifAbsent: [ 'evermore' ])
+					equals: k -> k printString ]
+			ifFalse: [
+				self
+					assert: (s associationAt: k ifAbsent: [ 'clevermore' ])
+					equals: 'clevermore' ] ]
 ]
 
 { #category : 'public' }
@@ -112,6 +202,54 @@ SkipListTest >> testCreation [
 ]
 
 { #category : 'public' }
+SkipListTest >> testDo [
+
+	| count prev |
+	count := 0.
+	prev := SmallInteger minVal.
+	s do: [ :val |
+		| valAsNumber |
+		self assert: (val isKindOf: String).
+		valAsNumber := val asNumber.
+		self assert: prev < valAsNumber.
+		count := count + 1.
+		prev := valAsNumber ].
+	self assert: count equals: d size
+]
+
+{ #category : 'public' }
+SkipListTest >> testEmpty [
+
+	| esk count |
+	esk := SkipList new.
+	self
+		assert: esk isEmpty;
+		assert: esk size equals: 0;
+		should: [ esk first ] raise: CollectionIsEmpty ;
+		should: [ esk firstAssociation ] raise: CollectionIsEmpty;
+		should: [ esk at: '3' ] raise: KeyNotFound;
+		should: [ esk associationAt: 'foo' ] raise: KeyNotFound;
+		should: [ esk associationAtOrAfter: 'bar' ] raise: KeyNotFound;
+		should: [ esk remove: 'bat' ] raise: KeyNotFound;
+		should: [ esk removeKey: 'boo' ] raise: KeyNotFound;
+		assert: (esk at: 'third' ifAbsent: [ 4 ]) equals: 4;
+		assert: (esk associationAt: 'baz' ifAbsent: [ 42 ]) equals: 42;
+		assert: (esk associationAtOrAfter: 12 ifAbsent: [ 24 ]) equals: 24;
+		assert: (esk associationBefore: 10 ifAbsent: [ 2 ]) equals: 2;
+		assert: (esk remove: -1 ifAbsent: [ 'who' ]) equals: 'who';
+		assert: (esk removeKey: 0 ifAbsent: [ 'no' ]) equals: 'no'.
+
+
+	count := 0.
+	esk associationsDo: [ :a | count := count + 1 ].
+	self assert: count equals: 0.
+	esk keysAndValuesDo: [ :k :v | count := count + 1 ].
+	self assert: count equals: 0.
+	esk keysDo: [ :k | count := count + 1 ].
+	self assert: count equals: 0
+]
+
+{ #category : 'public' }
 SkipListTest >> testIfAbsent [
 	"self run: #testIfAbsent"
 
@@ -145,6 +283,15 @@ SkipListTest >> testIfPresent [
 		sk at: 8 put: '88' ].
 	self assert: (sk at: 7) equals: '77777'.
 	self assert: (sk at: 8) equals: '88'
+]
+
+{ #category : 'public' }
+SkipListTest >> testIncludesKey [
+
+	d keysDo: [ :k | self assert: (s includesKey: k) ].
+
+	self randomKeysDo: [ :k |
+		self assert: (s includesKey: k) equals: (d includesKey: k) ]
 ]
 
 { #category : 'public' }
@@ -204,8 +351,8 @@ SkipListTest >> testNavigation [
 	skip atForward: 1 put: node1.
 	skip atForward: 2 put: node2.
 	skip instVarNamed: #numElements put: 2.
-	self assert: skip first = node1 value.
-	self assert: (skip at: 2) = node2 value
+	self assert: skip first equals: node1 value.
+	self assert: (skip at: 2) equals: node2 value
 ]
 
 { #category : 'implementationTests' }
@@ -221,16 +368,26 @@ SkipListTest >> testRandomLevel [
 { #category : 'public' }
 SkipListTest >> testRemove [
 	"tests size after removing element"
-	"self run:#testRemove"
-	
-	| s |
-	s := SkipList new.
-	s add: 1.
-	self assert: s size = 1.
-	self
-		should: [s remove: 2]
-		raise: Exception.
-	s remove: 1.
-	self assert: s size = 0
 
+	"self run:#testRemove"
+	| sk |
+	sk := SkipList new.
+	sk add: 1.
+	self assert: sk size equals: 1.
+	self should: [ sk remove: 2 ] raise: KeyNotFound.
+	sk remove: 1.
+	self assert: sk size equals: 0
+]
+
+{ #category : 'public' }
+SkipListTest >> testRemoveAll [
+
+	self
+		deny: s isEmpty;
+		assert: s size equals: d size.
+	s removeAll.
+	self
+		assert: s isEmpty;
+		assert: s size equals: 0.
+	s do: [ :each | self fail: 'do: body evaluated on an empty collection' ]
 ]

@@ -75,3 +75,10 @@ SkipListNode >> printOn: aStream [
         aStream nextPut: $)
 
 ]
+
+{ #category : 'private' }
+SkipListNode >> species [
+	"To compare equality with Associations"
+
+	^ Association
+]
