@@ -7,8 +7,7 @@ Class {
 	#name : 'SkipListNode',
 	#superclass : 'Association',
 	#instVars : [
-		'pointers',
-		'object'
+		'pointers'
 	],
 	#category : 'SkipLists',
 	#package : 'SkipLists'

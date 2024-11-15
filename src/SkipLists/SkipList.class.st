@@ -3,7 +3,14 @@ A skiplist is a sorted data structure that allows one to search for any element 
 
 It also allows one to enumerate forward to the next element. Basically, its a tree-like algorithm, except it doesn't use trees.
 
-The implementation here is similar to a Dictionary, in that it indexes (a subclass of) Associations. Thus, you can do    foo at: key put: value   You can also search for a key, if the key does not exist, it will report the first key greater than the search, or nil.
+This implementation can be used like a sorted Dictionary (see the dictionary api category), or like a sorted Set (see the ""set api"" category). The ""common api"" category applies to both kinds of use.
+The Set api is implemented by storing (a subclass of) Association for each entry, with the key and value identical.
+
+The collection is sorted by key. If no sortBlock is set, the natural ordering of the keys is used, comparing using #< and #=. If a sort block is set, it is used for inequality comparison, but #= is still used for equality tests, so the sort block must be consistent with the keys' response to #-.
+  
+Enumeraion is in sorted order. 
+
+Besides searching for a key using equality (e. g. #at:) you can search using a key that is not present, and get the result that corresponds the next lower or higher key. See #associationBefore: and similar messages.
 
 "
 Class {
@@ -67,66 +74,131 @@ SkipList class >> sortBlock: aBlock [
 	^ self new sortBlock: aBlock
 ]
 
-{ #category : 'adding' }
-SkipList >> add: element [ 
-        "Add an association or key on to the skiplist"
-        ^self add: element ifPresent: [].
-        
+{ #category : 'set api' }
+SkipList >> add: aKey [
+	"If aKey is not present, add the node (aKey -> aKey)."
+
+	self add: aKey ifPresent: [ :node |  ].
+	^ aKey
 ]
 
-{ #category : 'adding' }
-SkipList >> add: element ifPresent: aBlock [
-        ^self at: element put: element ifPresent: aBlock.
+{ #category : 'set api' }
+SkipList >> add: aKey ifPresent: aBlock [
+	"If aKey is not present, add the node (aKey -> aKey).
+	If a node with key of aKey is already present, evaluate aBlock with that node as the argument."
 
+	^ self at: aKey put: aKey ifPresent: aBlock
 ]
 
-{ #category : 'enumerating' }
+{ #category : 'dictionary api' }
+SkipList >> associationAt: aKey [
+
+	^ self associationAt: aKey ifAbsent: [ self errorKeyNotFound: aKey ]
+]
+
+{ #category : 'dictionary api' }
+SkipList >> associationAt: aKey ifAbsent: aBlock [
+	"Answer the node for the key. If it doesn't exist, evaluate aBlock"
+
+	| node |
+	node := self associationAtOrAfter: aKey ifAbsent: [ ^ aBlock value ].
+	(self is: node theNodeFor: aKey) ifFalse: [ ^ aBlock value ].
+	^ node
+]
+
+{ #category : 'dictionary api' }
+SkipList >> associationAtOrAfter: aKey [
+	"Answer the first entry with a key > aKey"
+
+	| node forward |
+	node := self.
+	level to: 1 by: -1 do: [ :i |
+		[
+		forward := node forward: i.
+		self is: forward before: aKey ] whileTrue: [ node := forward ] ].
+	"At this point: node < element <= forward"
+	node := node next.
+	^ node
+]
+
+{ #category : 'dictionary api' }
+SkipList >> associationAtOrAfter: aKey ifAbsent: aBlock [
+	"Answer the first entry with a key >= aKey"
+
+	| node forward |
+	node := self.
+	level to: 1 by: -1 do: [ :i |
+		[
+		forward := node forward: i.
+		self is: forward before: aKey ] whileTrue: [ node := forward ] ].
+	"At this point: node < element <= forward"
+	node := node next.
+	^ node ifNil: [ aBlock value ] ifNotNil: [ node ]
+]
+
+{ #category : 'dictionary api' }
+SkipList >> associationBefore: aKey ifAbsent: aBlock [
+	"Answer the last entry whose key < aKey"
+
+	| node |
+	node := self searchBefore: aKey.
+	^ node ifNil: [ aBlock value ] ifNotNil: [ node ]
+]
+
+{ #category : 'dictionary api' }
 SkipList >> associationsDo: aBlock [
-        self nodesDo: [:node | aBlock value: node]
+
+	self nodesDo: aBlock
 ]
 
-{ #category : 'accessing' }
-SkipList >> at: element [ 
-        ^self at: element ifAbsent: []
+{ #category : 'dictionary api' }
+SkipList >> at: aKey [
+
+	^ self at: aKey ifAbsent: [ self errorKeyNotFound: aKey ]
 ]
 
-{ #category : 'accessing' }
-SkipList >> at: element ifAbsent: aBlock [
-        "Get the key if it exists, or if it doesn't exist, get the key just after it."
-        | node forward |
-        node := self.
-        level to: 1 by: -1 do: [:i |
-                        [forward := node forward: i.
-                        self is: forward before: element] whileTrue: [node := forward]].
-        node := node next.
-        (self is: node theNodeFor: element) ifFalse: [^aBlock value].
-        ^node value
+{ #category : 'dictionary api' }
+SkipList >> at: aKey ifAbsent: aBlock [
+	"Get the value for the key. If it doesn't exist, evaluate aBlock"
 
+	| node forward |
+	node := self.
+	level to: 1 by: -1 do: [ :i |
+		[
+		forward := node forward: i.
+		self is: forward before: aKey ] whileTrue: [ node := forward ] ].
+	node := node next.
+	(self is: node theNodeFor: aKey) ifFalse: [ ^ aBlock value ].
+	^ node value
 ]
 
-{ #category : 'adding' }
-SkipList >> at: key put: value [ 
-        "Add an association or key on to the skiplist"
-        ^self at: key put: value ifPresent: [].
-        
+{ #category : 'dictionary api' }
+SkipList >> at: key put: value [
+	"Associate key with value. This adds a key, or replaces the value of an existing key."
+
+	self at: key put: value ifPresent: [ :node | node value: value ].
+	^ value
 ]
 
-{ #category : 'adding' }
-SkipList >> at: key put: value ifPresent: aBlock [
-        | node lvl s |
-        node := self search: key updating: splice.
-        node ifNotNil: [^ aBlock value].
-        lvl := self randomLevel.
-        node := SkipListNode key: key value: value level: lvl.
-        level + 1 to: lvl do: [:i | splice at: i put: self].
-        1 to: lvl do: [:i |
-                                s := splice at: i.
-                                node atForward: i put: (s forward: i).
-                                s atForward: i put: node].
-        numElements := numElements + 1.
-        splice atAllPut: nil.
-        ^ node
+{ #category : 'dictionary api' }
+SkipList >> at: aKey put: aValue ifPresent: aBlock [
+	"If aKey is not present, add the node (aKey -> aValue) and answer aValue.
+	If a node with key of aKey is already present, answer the result of 
+	evaluating aBlock with that node as the argument.	"
 
+	| node lvl s |
+	node := self search: aKey updating: splice.
+	node ifNotNil: [ ^ aBlock value: node ].
+	lvl := self randomLevel.
+	node := SkipListNode key: aKey value: aValue level: lvl.
+	level + 1 to: lvl do: [ :i | splice at: i put: self ].
+	1 to: lvl do: [ :i |
+		s := splice at: i.
+		node atForward: i put: (s forward: i).
+		s atForward: i put: node ].
+	numElements := numElements + 1.
+	splice atAllPut: nil.
+	^ aValue
 ]
 
 { #category : 'private' }
@@ -137,31 +209,43 @@ SkipList >> atForward: i put: node [
 	^ pointers at: i put: node
 ]
 
-{ #category : 'copying' }
+{ #category : 'common api' }
 SkipList >> copy [
 	"Create a copy of the receiver.
 	Note: It's hard to operate on skipList structure.
-	Easier is to recreate a neww from scratch."
-	
-	"This one bugs if used with different keys and values...
-	^self class newFrom: self"
-	
+	Easier is to recreate a new one from scratch."
+
 	| copy |
 	copy := self class new.
 	copy sortBlock: sortBlock.
-	self keysAndValuesDo: [:k :v | copy at: k put: v].
-	^copy
+	self keysAndValuesDo: [ :k :v | copy at: k put: v ].
+	^ copy
 ]
 
-{ #category : 'enumerating' }
+{ #category : 'common api' }
 SkipList >> do: aBlock [
         self nodesDo: [:node | aBlock value: node value]
 ]
 
-{ #category : 'accessing' }
-SkipList >> first [
-        ^pointers first.
+{ #category : 'private' }
+SkipList >> errorKeyNotFound: aKey [
 
+	KeyNotFound signalFor: aKey
+]
+
+{ #category : 'set api' }
+SkipList >> first [
+	"Answer the value with the lowest key."
+
+	^ self firstAssociation value
+]
+
+{ #category : 'dictionary api' }
+SkipList >> firstAssociation [
+
+	self emptyCheck.
+
+	^ pointers first
 ]
 
 { #category : 'private' }
@@ -169,9 +253,20 @@ SkipList >> forward: i [
 	^ pointers at: i
 ]
 
-{ #category : 'testing' }
+{ #category : 'private' }
 SkipList >> includes: key [
-        ^ (self search: key updating: nil) notNil
+	"Since the semantics of #includes: differ between Sets and Dictionaries,
+	this dual-personality object remains neutral and does not implement it.
+	Send #includesKey: instead, or make a subclass that implements this message
+	the way you'd like it to work."
+
+	self shouldNotImplement
+]
+
+{ #category : 'common api' }
+SkipList >> includesKey: key [
+
+	^ (self search: key updating: nil) notNil
 ]
 
 { #category : 'initialization' }
@@ -184,17 +279,17 @@ SkipList >> initialize: maxLevel [
 ]
 
 { #category : 'private' }
-SkipList >> is: node before: element [ 
+SkipList >> is: node before: aKey [ 
         | key |
         node ifNil: [^ false].
         key := node key.
         ^ sortBlock
-                ifNil: [key < element]
-                ifNotNil: [(self is: key equalTo: element) ifTrue: [^ false].
-                        sortBlock value: key value: element]
+                ifNil: [key < aKey]
+                ifNotNil: [(self is: key equalTo: aKey) ifTrue: [^ false].
+                        sortBlock value: key value: aKey]
 ]
 
-{ #category : 'element comparison' }
+{ #category : 'private' }
 SkipList >> is: element1 equalTo: element2 [
 	^ element1 = element2
 ]
@@ -207,33 +302,33 @@ SkipList >> is: node theNodeFor: key [
         ^ self is: node key equalTo: key
 ]
 
-{ #category : 'testing' }
+{ #category : 'common api' }
 SkipList >> isEmpty [
 	^ numElements = 0
 ]
 
-{ #category : 'enumerating' }
+{ #category : 'dictionary api' }
 SkipList >> keysAndValuesDo: aBlock [
         ^self associationsDo:[:assoc|
                 aBlock value: assoc key value: assoc value].
 ]
 
-{ #category : 'enumerating' }
+{ #category : 'dictionary api' }
 SkipList >> keysDo: aBlock [
         self nodesDo: [:node | aBlock value: node key]
 ]
 
-{ #category : 'accessing' }
+{ #category : 'common api' }
 SkipList >> level [
 	^ level
 ]
 
-{ #category : 'accessing' }
+{ #category : 'common api' }
 SkipList >> maxLevel [
 	^ pointers size
 ]
 
-{ #category : 'accessing' }
+{ #category : 'common api' }
 SkipList >> maxLevel: n [
 	| newLevel oldPointers |
 	newLevel := n max: level.
@@ -249,7 +344,7 @@ SkipList >> next [
 	^ pointers first
 ]
 
-{ #category : 'node enumeration' }
+{ #category : 'private' }
 SkipList >> nodesDo: aBlock [
 	| node |
 	node := pointers first.
@@ -270,30 +365,18 @@ SkipList >> randomLevel [
 	^ answer
 ]
 
-{ #category : 'removing' }
-SkipList >> remove: element [ 
-	^ self remove: element ifAbsent: [self errorNotFound: element]
+{ #category : 'set api' }
+SkipList >> remove: aKey [ 
+	^ self remove: aKey ifAbsent: [self errorNotFound: aKey]
 ]
 
-{ #category : 'removing' }
-SkipList >> remove: key ifAbsent: aBlock [
-        | node i s |
-        "Remove and return th association containing key."
-        node := self search: key updating: splice.
-        node ifNil: [^ aBlock value].
-        i := 1.
-        [s := splice at: i.
-        i <= level and: [(s forward: i) == node]]
-                                whileTrue:
-                                        [s atForward: i put: (node forward: i).
-                                        i := i + 1].
-        numElements := numElements - 1.
-        splice atAllPut: nil.
-        ^ node.
+{ #category : 'set api' }
+SkipList >> remove: aKey ifAbsent: aBlock [
 
+	^ self removeKey: aKey ifAbsent: aBlock
 ]
 
-{ #category : 'removing' }
+{ #category : 'common api' }
 SkipList >> removeAll [
 	pointers atAllPut: nil.
 	splice atAllPut: nil.
@@ -301,42 +384,90 @@ SkipList >> removeAll [
 	level := 0.
 ]
 
-{ #category : 'accessing' }
-SkipList >> search: element [ 
-        "Get the key if it exists, or if it doesn't exist, get the key just after it. If no key after it, return nil."
-        | node forward |
-        node := self.
-        level to: 1 by: -1 do: [:i |
-                        [forward := node forward: i.
-                        self is: forward before: element] whileTrue: [node := forward]].
-        node := node next.
-        ^node
+{ #category : 'dictionary api' }
+SkipList >> removeKey: aKey [
+
+	^ self removeKey: aKey ifAbsent: [ self errorNotFound: aKey ]
+]
+
+{ #category : 'dictionary api' }
+SkipList >> removeKey: aKey ifAbsent: aBlock [
+	"Remove the node with the given key and answer its value.
+	If no such node, answer the result of evaluating aBlock."
+	
+	| node i s |
+	node := self search: aKey updating: splice.
+	node ifNil: [ ^ aBlock value ].
+	i := 1.
+	[
+	s := splice at: i.
+	i <= level and: [ (s forward: i) == node ] ] whileTrue: [
+		s atForward: i put: (node forward: i).
+		i := i + 1 ].
+	numElements := numElements - 1.
+	splice atAllPut: nil.
+	^ node value
 ]
 
 { #category : 'private' }
-SkipList >> search: element updating: array [
-        | node forward |
-        node := self.
-        level to: 1 by: -1 do: [:i |
-                        [forward := node forward: i.
-                        self is: forward before: element] whileTrue: [node := forward].
-                        "At this point: node < element <= forward"
-                        array ifNotNil: [array at: i put: node]].
-        node := node next.
-        ^ (self is: node theNodeFor: element) ifTrue: [node]
+SkipList >> search: aKey updating: array [
+	"Answer the node whose key is equal (or identical, for IdentitySkipList) to aKey.
+	Answer nil if no such node."
+
+	| node |
+	node := self searchAtOrAfter: aKey updating: array.
+	^ (self is: node theNodeFor: aKey) ifTrue: [ node ]
 ]
 
-{ #category : 'accessing' }
+{ #category : 'private' }
+SkipList >> searchAtOrAfter: aKey updating: anArray [
+	"Answer the first node whose key >= aKey, nil if there is no such node"
+
+	| node |
+	node := self searchBefore: aKey updating: anArray.
+	^ node ifNotNil: [ node next ]
+]
+
+{ #category : 'private' }
+SkipList >> searchBefore: aKey [
+	"Answer the last node whose key < aKey, nil if there is no such node"
+
+	| node forward |
+	node := self.
+	level to: 1 by: -1 do: [ :i |
+		[
+		forward := node forward: i.
+		self is: forward before: aKey ] whileTrue: [ node := forward ] ].
+	"At this point: node < aKey <= forward, if all non-nil"
+	^ node
+]
+
+{ #category : 'private' }
+SkipList >> searchBefore: aKey updating: anArray [
+	"Answer the last node whose key < aKey, nil if there is no such node"
+
+	| node forward |
+	node := self.
+	level to: 1 by: -1 do: [ :i |
+		[
+		forward := node forward: i.
+		self is: forward before: aKey ] whileTrue: [ node := forward ].
+		"At this point: node < aKey <= forward, if all non-nil"
+		anArray ifNotNil: [ anArray at: i put: node ] ].
+	^ node
+]
+
+{ #category : 'common api' }
 SkipList >> size [
 	^ numElements
 ]
 
-{ #category : 'accessing' }
+{ #category : 'common api' }
 SkipList >> sortBlock [
 	^ sortBlock
 ]
 
-{ #category : 'accessing' }
+{ #category : 'common api' }
 SkipList >> sortBlock: aBlock [
 	sortBlock := aBlock
 ]
