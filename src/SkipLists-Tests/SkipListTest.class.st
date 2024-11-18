@@ -65,7 +65,15 @@ SkipListTest >> randomKeysDo: aBlock [
 SkipListTest >> setUp [
 
 	super setUp.
-	self makeSkipList
+	self makeSkipList.
+	s audit
+]
+
+{ #category : 'support' }
+SkipListTest >> tearDown [
+
+	s audit.
+	super tearDown
 ]
 
 { #category : 'implementationTests' }
@@ -222,10 +230,11 @@ SkipListTest >> testEmpty [
 
 	| esk count |
 	esk := SkipList new.
+	esk audit.
 	self
 		assert: esk isEmpty;
 		assert: esk size equals: 0;
-		should: [ esk first ] raise: CollectionIsEmpty ;
+		should: [ esk first ] raise: CollectionIsEmpty;
 		should: [ esk firstAssociation ] raise: CollectionIsEmpty;
 		should: [ esk at: '3' ] raise: KeyNotFound;
 		should: [ esk associationAt: 'foo' ] raise: KeyNotFound;

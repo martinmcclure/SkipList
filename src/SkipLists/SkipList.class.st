@@ -200,6 +200,84 @@ SkipList >> atForward: i put: node [
 	^ pointers at: i put: node
 ]
 
+{ #category : 'auditing' }
+SkipList >> audit [
+	"Check my structure and signal an error if anything is amiss."
+
+	"Invariants checked:
+	* Pointers at all levels point from nodes with lower keys to higher keys (according to sort block, if any)
+	* No two nodes have equal/identical keys.
+	* All nodes present at a level are also present at all lower levels
+	* The number of nodes at the lowest level is equal to the answer to #size
+	* No nodes exist whose level is higher than the level of the SkipList.
+	* All nodes are SkipListNodes"
+
+	| nodesByLevel |
+	nodesByLevel := Array new: pointers size.
+
+	1 to: pointers size do: [ :levelNum |
+	self auditLevel: levelNum into: nodesByLevel ].
+
+	nodesByLevel first size ~= self size ifTrue: [
+		self error:
+			'SkipList size does not agree with number of nodes in first level' ]
+]
+
+{ #category : 'private auditing' }
+SkipList >> auditContiguityOfLevel: levelNum [
+
+	(pointers at: levelNum) ifNil: [
+		levelNum + 1 to: pointers size do: [ :i |
+			(pointers at: i) ifNotNil: [
+				self error:
+					'Level ' , levelNum printString , ' is empty, but higher level '
+					, i printString , ' is not empty' ] ] ]
+]
+
+{ #category : 'private auditing' }
+SkipList >> auditLevel: levelNum into: nodesByLevel [
+
+	| nodes node |
+	self auditContiguityOfLevel: levelNum.
+	nodes := OrderedCollection new.
+	nodesByLevel at: levelNum put: nodes.
+	node := pointers at: levelNum.
+	[ node notNil ] whileTrue: [
+		nodes add: node.
+		(node isKindOf: SkipListNode) ifFalse:
+			'Node found that is not a SkipListNode'.
+		node level > level ifTrue: [
+			self error:
+				'Node found with level higher than the SkipList''s level' ] ].
+	self auditSortingOf: nodes.
+	1 to: nodes size do: [ :i |
+		| thisNode |
+		thisNode := nodes at: i.
+		1 to: levelNum - 1 do: [ :j |
+			| lowerNodes |
+			lowerNodes := nodesByLevel at: j.
+			(lowerNodes includes: thisNode) ifFalse: [
+				self error:
+					'A node in an upper level is not present in a lower level' ] ] ]
+]
+
+{ #category : 'private auditing' }
+SkipList >> auditSortingOf: nodes [
+
+	2 to: nodes size do: [ :i |
+		| thisNode prevNode prevKey thisKey |
+		thisNode := nodes at: i.
+		thisKey := thisNode key.
+		prevNode := nodes at: i - 1.
+		prevKey := prevNode key.
+		(self is: prevKey equalTo: thisKey) ifTrue: [
+			self error: 'Found two nodes with equal/identical keys' ].
+		(sortBlock
+			 ifNil: [ prevKey < thisKey ]
+			 ifNotNil: [ sortBlock value: prevKey value: thisKey ]) ifFalse: [
+			self error: 'Found two out-of-order nodes' ] ]
+]
+
 { #category : 'common api' }
 SkipList >> copy [
 	"Create a copy of the receiver.
