@@ -9,11 +9,24 @@ Class {
 	#superclass : 'ClassTestCase',
 	#instVars : [
 		's',
-		'd'
+		'd',
+		'sortBlock'
 	],
 	#category : 'SkipLists-Tests',
 	#package : 'SkipLists-Tests'
 }
+
+{ #category : 'testing' }
+SkipListTest class >> mustTestCoverage [
+
+	^ true
+]
+
+{ #category : 'coverage' }
+SkipListTest >> classToBeTested [
+
+	^ SkipList
+]
 
 { #category : 'support' }
 SkipListTest >> keyRange [
@@ -28,7 +41,7 @@ SkipListTest >> makeSkipList [
 
 	| size |
 	size := (10 to: 100) atRandom.
-	s := SkipList new.
+	s := SkipList new: size sortBlock: sortBlock.
 	d := Dictionary new: size.
 	size timesRepeat: [
 		| key value |
@@ -62,10 +75,21 @@ SkipListTest >> randomKeysDo: aBlock [
 ]
 
 { #category : 'support' }
+SkipListTest >> selectorsToBeIgnored [
+
+	| c |
+	c := self classToBeTested.
+	^ (c selectorsInProtocol: #private)
+	  , (c selectorsInProtocol: #'private auditing')
+	  , (c selectorsInProtocol: #initialization)
+]
+
+{ #category : 'support' }
 SkipListTest >> setUp [
 
 	super setUp.
 	self makeSkipList.
+	self assert: s sortBlock identicalTo: nil.
 	s audit
 ]
 
@@ -104,7 +128,7 @@ SkipListTest >> testAddIfPresent [
 	self assert: s size equals: 2
 ]
 
-{ #category : 'public' }
+{ #category : 'tests' }
 SkipListTest >> testAssociationAt [
 
 	d keysAndValuesDo: [ :k :v |
@@ -117,7 +141,7 @@ SkipListTest >> testAssociationAt [
 			ifFalse: [ self should: [ s associationAt: k ] raise: KeyNotFound ] ]
 ]
 
-{ #category : 'public' }
+{ #category : 'tests' }
 SkipListTest >> testAssociationAtIfAbsent [
 
 	d keysAndValuesDo: [ :k :v |
@@ -137,7 +161,7 @@ SkipListTest >> testAssociationAtIfAbsent [
 					equals: 'clevermore' ] ]
 ]
 
-{ #category : 'public' }
+{ #category : 'tests' }
 SkipListTest >> testAt [
 	"self run: #testAt"
 
@@ -158,7 +182,7 @@ SkipListTest >> testAt [
 	self should: [ sk at: 100 ] raise: KeyNotFound.
 ]
 
-{ #category : 'public' }
+{ #category : 'tests' }
 SkipListTest >> testAtPutAlreadyPresent [
 	"self run: #testAtPutAlreadyPresent"
 
@@ -180,7 +204,7 @@ SkipListTest >> testAtPutAlreadyPresent [
 	self assert: sk size equals: 3
 ]
 
-{ #category : 'public' }
+{ #category : 'tests' }
 SkipListTest >> testCopy [
 	"This is a non regression test for http://bugs.squeak.org/view.php?id=6778"
 
@@ -194,7 +218,13 @@ SkipListTest >> testCopy [
 		description: 'changing the copy should not change the original'
 ]
 
-{ #category : 'public' }
+{ #category : 'tests' }
+SkipListTest >> testCoverage [
+
+	super testCoverage
+]
+
+{ #category : 'tests' }
 SkipListTest >> testCreation [
 	"self run: #testCreation"
 
@@ -209,7 +239,7 @@ SkipListTest >> testCreation [
 	self assert: (sk includesKey: 7)
 ]
 
-{ #category : 'public' }
+{ #category : 'tests' }
 SkipListTest >> testDo [
 
 	| count prev |
@@ -225,7 +255,7 @@ SkipListTest >> testDo [
 	self assert: count equals: d size
 ]
 
-{ #category : 'public' }
+{ #category : 'tests' }
 SkipListTest >> testEmpty [
 
 	| esk count |
@@ -255,10 +285,17 @@ SkipListTest >> testEmpty [
 	esk keysAndValuesDo: [ :k :v | count := count + 1 ].
 	self assert: count equals: 0.
 	esk keysDo: [ :k | count := count + 1 ].
-	self assert: count equals: 0
+	self assert: count equals: 0.
+
+	"Emptiness-related messages on a non-empty SkipList"
+	esk at: 1 put: 'one'.
+	self
+		assert: esk size equals: 1;
+		deny: esk isEmpty.
+	esk audit
 ]
 
-{ #category : 'public' }
+{ #category : 'tests' }
 SkipListTest >> testIfAbsent [
 	"self run: #testIfAbsent"
 
@@ -276,7 +313,7 @@ SkipListTest >> testIfAbsent [
 	self assert: temp = '88'
 ]
 
-{ #category : 'public' }
+{ #category : 'tests' }
 SkipListTest >> testIfPresent [
 	"self run: #testIfPresent"
 
@@ -294,7 +331,7 @@ SkipListTest >> testIfPresent [
 	self assert: (sk at: 8) equals: '88'
 ]
 
-{ #category : 'public' }
+{ #category : 'tests' }
 SkipListTest >> testIncludesKey [
 
 	d keysDo: [ :k | self assert: (s includesKey: k) ].
@@ -303,7 +340,7 @@ SkipListTest >> testIncludesKey [
 		self assert: (s includesKey: k) equals: (d includesKey: k) ]
 ]
 
-{ #category : 'public' }
+{ #category : 'tests' }
 SkipListTest >> testIsEqualTo [
 	"self run: #testIsEqualTo"
 	"self debug: #testIsEqualTo"
@@ -364,6 +401,38 @@ SkipListTest >> testNavigation [
 	self assert: (skip at: 2) equals: node2 value
 ]
 
+{ #category : 'tests' }
+SkipListTest >> testNew_ [
+
+	| sk |
+	-100 to: 2 do: [ :i |
+		sk := SkipList new: i.
+		self assert: sk maxLevel equals: 1 ].
+
+	sk := SkipList new: 3.
+	self assert: sk maxLevel equals: 2.
+
+	sk := SkipList new: 512.
+	self assert: sk maxLevel equals: 9.
+
+	sk := SkipList new: 513.
+	self assert: sk maxLevel equals: 10
+]
+
+{ #category : 'tests' }
+SkipListTest >> testPrinting [ 
+
+	| sk | 
+	sk := SkipList new.
+	self assert: sk printString equals: 'a SkipList()'.
+	sk := SkipList new: 1.
+	self assert: sk printString equals: 'a SkipList()'.
+	sk at: 432 put: 'no?'.
+	self assert: sk printString equals: 'a SkipList(432->''no?'')'.
+	sk add: 234.
+	self assert: sk printString equals: 'a SkipList(234, 432->''no?'')'.
+]
+
 { #category : 'implementationTests' }
 SkipListTest >> testRandomLevel [
 	"a randomLevel should not be greater than maxLevel"
@@ -374,7 +443,7 @@ SkipListTest >> testRandomLevel [
 	self assert: s randomLevel <= 5
 ]
 
-{ #category : 'public' }
+{ #category : 'tests' }
 SkipListTest >> testRemove [
 	"tests size after removing element"
 
@@ -388,7 +457,7 @@ SkipListTest >> testRemove [
 	self assert: sk size equals: 0
 ]
 
-{ #category : 'public' }
+{ #category : 'tests' }
 SkipListTest >> testRemoveAll [
 
 	self
@@ -399,4 +468,13 @@ SkipListTest >> testRemoveAll [
 		assert: s isEmpty;
 		assert: s size equals: 0.
 	s do: [ :each | self fail: 'do: body evaluated on an empty collection' ]
+]
+
+{ #category : 'tests' }
+SkipListTest >> testSortBlock [
+	sortBlock := [ :a :b | a > b ].
+	self should: [ s sortBlock: sortBlock ] raise: Error.
+	self makeSkipList.
+	self assert: s sortBlock equals: sortBlock.
+	s audit
 ]

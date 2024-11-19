@@ -76,6 +76,14 @@ SkipListNode >> printOn: aStream [
 
 ]
 
+{ #category : 'accessing' }
+SkipListNode >> printShortOn: aStream [
+
+	key == value
+		ifTrue: [ aStream << key printString ]
+		ifFalse: [ super printOn: aStream ]
+]
+
 { #category : 'private' }
 SkipListNode >> species [
 	"To compare equality with Associations"

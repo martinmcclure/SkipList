@@ -48,12 +48,16 @@ SkipList class >> new [
 	"
 	SkipList new
 	"
-	^ super new initialize: 10
+
+	^ self maxLevel: 10
 ]
 
 { #category : 'instance creation' }
 SkipList class >> new: anInteger [
-	^ self maxLevel: (anInteger log: 2) ceiling
+
+	| n |
+	n := anInteger max: 2.
+	^ self maxLevel: (n log: 2) ceiling
 ]
 
 { #category : 'instance creation' }
@@ -427,6 +431,30 @@ SkipList >> nodesDo: aBlock [
 ]
 
 { #category : 'private' }
+SkipList >> nodesDo: elementBlock separatedBy: separatorBlock [
+	"Evaluate the elementBlock for all my nodes,
+	and evaluate the separatorBlock between."
+
+	| beforeFirst |
+	beforeFirst := true.
+	self nodesDo: [ :each |
+		beforeFirst
+			ifTrue: [ beforeFirst := false ]
+			ifFalse: [ separatorBlock value ].
+		elementBlock value: each ]
+]
+
+{ #category : 'private' }
+SkipList >> printElementsOn: aStream [
+
+	aStream nextPut: $(.
+	self
+		nodesDo: [ :node | node printShortOn: aStream ]
+		separatedBy: [ aStream << ', ' ].
+	aStream nextPut: $)
+]
+
+{ #category : 'private' }
 SkipList >> randomLevel [
 	| p answer max |
 	p := 0.5.
@@ -528,5 +556,9 @@ SkipList >> sortBlock [
 
 { #category : 'common api' }
 SkipList >> sortBlock: aBlock [
+
+	self isEmpty ifFalse: [
+		self error:
+			'Cannot change the sort block of a SkipList with contents' ].
 	sortBlock := aBlock
 ]
