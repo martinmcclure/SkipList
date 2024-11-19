@@ -29,6 +29,65 @@ SkipListTest >> classToBeTested [
 ]
 
 { #category : 'support' }
+SkipListTest >> confirmAssociationAtOrAfterKey: thisKey nextKey: nextKey [
+
+	| lowKey highKey aLow aThis aHigh |
+	lowKey := thisKey - (1 / 2).
+	highKey := thisKey + (1 / 2).
+	aLow := s associationAtOrAfter: lowKey.
+	aThis := s associationAtOrAfter: thisKey.
+	self
+		assert: aLow equals: aThis;
+		assert: aThis key equals: thisKey;
+		assert: aThis value equals: thisKey printString.
+	aLow := s associationAtOrAfter: lowKey ifAbsent: [ 'gone' ].
+	aThis := s associationAtOrAfter: thisKey ifAbsent: [ 'gene' ].
+	self
+		assert: aLow equals: aThis;
+		assert: aThis key equals: thisKey;
+		assert: aThis value equals: thisKey printString.
+
+	nextKey
+		ifNil: [
+			self should: [ s associationAtOrAfter: highKey ] raise: KeyNotFound.
+			aHigh := s associationAtOrAfter: highKey ifAbsent: 'bone'.
+			self assert: aHigh equals: 'bone' ]
+		ifNotNil: [
+			aHigh := s associationAtOrAfter: highKey.
+			self
+				assert: aHigh key equals: nextKey;
+				assert: aHigh value equals: nextKey printString.
+			aHigh := s associationAtOrAfter: highKey ifAbsent: [ 'hone' ].
+			self
+				assert: aHigh key equals: nextKey;
+				assert: aHigh value equals: nextKey printString ]
+]
+
+{ #category : 'support' }
+SkipListTest >> confirmAssociationBeforeKey: thisKey prevKey: prevKey [
+
+	| lowKey highKey aLow aThis aHigh |
+	lowKey := thisKey - (1 / 2).
+	highKey := thisKey + (1 / 2).
+
+	aLow := s associationBefore: lowKey ifAbsent: [ 'home' ].
+	prevKey ifNil: [ self assert: aLow equals: 'home' ] ifNotNil: [
+		self
+			assert: aLow key equals: prevKey;
+			assert: aLow value equals: prevKey printString ].
+	aThis := s associationBefore: thisKey ifAbsent: [ 'hole' ].
+	prevKey ifNil: [ self assert: aThis equals: 'hole' ] ifNotNil: [
+		self
+			assert: aThis key equals: prevKey;
+			assert: aThis value equals: prevKey printString ].
+
+	aHigh := s associationBefore: highKey ifAbsent: [ 'bole' ].
+	self
+		assert: aHigh key equals: thisKey;
+		assert: aHigh value equals: thisKey printString
+]
+
+{ #category : 'support' }
 SkipListTest >> keyRange [
 	"The range of keys used in most tests"
 
@@ -82,6 +141,9 @@ SkipListTest >> selectorsToBeIgnored [
 	^ (c selectorsInProtocol: #private)
 	  , (c selectorsInProtocol: #'private auditing')
 	  , (c selectorsInProtocol: #initialization)
+	  , #( new:sortBlock: at:put:ifPresent: )
+	"new:sortBlock: is used by multiple tests via setUp and makeSkipList.
+	at:put:ifPresent: is used by at:put: and add:ifPresent: which are tested."
 ]
 
 { #category : 'support' }
@@ -230,13 +292,23 @@ SkipListTest >> testCreation [
 
 	"self debug: #testCreation"
 
-	| sk |
+	| sk sb |
 	sk := SkipList new.
 	sk at: 11 put: '111111'.
 	sk at: 3 put: '3333'.
 	sk at: 7 put: '77777'.
-	self assert: (sk at: 7) = '77777'.
-	self assert: (sk includesKey: 7)
+	self assert: (sk at: 7) equals: '77777'.
+	self assert: (sk includesKey: 7).
+	sk audit.
+
+	sb := [ :a :b | a > b ].
+	sk := SkipList maxLevel: 3 sortBlock: sb.
+	sk audit.
+	sk at: 'foo' put: 'bar'.
+	sk audit.
+	self
+		assert: sk maxLevel equals: 3;
+		assert: sk sortBlock identicalTo: sb
 ]
 
 { #category : 'tests' }
@@ -402,6 +474,27 @@ SkipListTest >> testNavigation [
 ]
 
 { #category : 'tests' }
+SkipListTest >> testNewFrom [
+
+	| source sk |
+	source := {
+		          'foo'.
+		          'bar'.
+		          'foo' copy }.
+	sk := SkipList newFrom: source.
+	sk audit.
+	self
+		assert: sk size equals: 2;
+		assert: sk first equals: 'bar'.
+
+	sk := IdentitySkipList newFrom: source.
+	sk audit.
+	self
+		assert: sk size equals: 3;
+		assert: sk first equals: 'bar'
+]
+
+{ #category : 'tests' }
 SkipListTest >> testNew_ [
 
 	| sk |
@@ -471,10 +564,31 @@ SkipListTest >> testRemoveAll [
 ]
 
 { #category : 'tests' }
+SkipListTest >> testSearching [
+	"Searching on an empty SkipList is tested in #testEmpty"
+
+	| sortedKeys |
+	sortedKeys := d keys sorted.
+
+	1 to: sortedKeys size do: [ :i |
+		| prevKey thisKey nextKey |
+		prevKey := i = 1
+			           ifTrue: [ nil ]
+			           ifFalse: [ sortedKeys at: i - 1 ].
+		thisKey := sortedKeys at: i.
+		nextKey := i = sortedKeys size
+			           ifTrue: [ nil ]
+			           ifFalse: [ sortedKeys at: i + 1 ].
+		self
+			confirmAssociationAtOrAfterKey: thisKey nextKey: nextKey;
+			confirmAssociationBeforeKey: thisKey prevKey: prevKey ]
+]
+
+{ #category : 'tests' }
 SkipListTest >> testSortBlock [
 	sortBlock := [ :a :b | a > b ].
 	self should: [ s sortBlock: sortBlock ] raise: Error.
 	self makeSkipList.
 	self assert: s sortBlock equals: sortBlock.
-	s audit
+	"s will be audited in tearDown"
 ]

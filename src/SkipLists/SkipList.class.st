@@ -66,7 +66,11 @@ SkipList class >> new: anInteger sortBlock: aBlock [
 ]
 
 { #category : 'instance creation' }
-SkipList class >> newFrom: aCollection [ 
+SkipList class >> newFrom: aCollection [
+	"Create and answer a set-like SkipList that contains the contents of the collection.
+	Duplicate (equal, or identical for my subclass) elements in aCollection will result in a 
+	single element in the new SkipList. Do not depend on which duplicate element is retained."
+
 	| skipList |
 	skipList := self new: aCollection size.
 	skipList addAll: aCollection.
@@ -279,10 +283,16 @@ SkipList >> auditSortingOf: nodes [
 		prevKey := prevNode key.
 		(self is: prevKey equalTo: thisKey) ifTrue: [
 			self error: 'Found two nodes with equal/identical keys' ].
-		(sortBlock
-			 ifNil: [ prevKey < thisKey ]
-			 ifNotNil: [ sortBlock value: prevKey value: thisKey ]) ifFalse: [
-			self error: 'Found two out-of-order nodes' ] ]
+		self auditSortingOfKey: prevKey withSubsequentKey: thisKey ]
+]
+
+{ #category : 'private auditing' }
+SkipList >> auditSortingOfKey: prevKey withSubsequentKey: thisKey [
+
+	^ (sortBlock
+		   ifNil: [ prevKey < thisKey ]
+		   ifNotNil: [ sortBlock value: prevKey value: thisKey ]) ifFalse: [
+		  self error: 'Found two out-of-order nodes' ]
 ]
 
 { #category : 'common api' }
