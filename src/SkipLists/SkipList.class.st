@@ -220,7 +220,9 @@ SkipList >> audit [
 
 	nodesByLevel first size ~= self size ifTrue: [
 		self error:
-			'SkipList size does not agree with number of nodes in first level' ]
+			'SkipList size does not agree with number of nodes in first level' ].
+
+	^ nodesByLevel
 ]
 
 { #category : 'private auditing' }
@@ -244,11 +246,12 @@ SkipList >> auditLevel: levelNum into: nodesByLevel [
 	node := pointers at: levelNum.
 	[ node notNil ] whileTrue: [
 		nodes add: node.
-		(node isKindOf: SkipListNode) ifFalse:
-			'Node found that is not a SkipListNode'.
+		(node isKindOf: SkipListNode) ifFalse: [
+			'Node found that is not a SkipListNode' ].
 		node level > level ifTrue: [
 			self error:
-				'Node found with level higher than the SkipList''s level' ] ].
+				'Node found with level higher than the SkipList''s level' ].
+		node := node forward: levelNum ].
 	self auditSortingOf: nodes.
 	1 to: nodes size do: [ :i |
 		| thisNode |
