@@ -64,27 +64,37 @@ SkipListTest >> confirmAssociationAtOrAfterKey: thisKey nextKey: nextKey [
 ]
 
 { #category : 'support' }
-SkipListTest >> confirmAssociationBeforeKey: thisKey prevKey: prevKey [
+SkipListTest >> confirmAssociationAtOrBeforeKey: thisKey prevKey: prevKey [
 
-	| lowKey highKey aLow aThis aHigh |
+	| lowKey highKey aLow bLow aThis bThis aHigh bHigh |
 	lowKey := thisKey - (1 / 2).
 	highKey := thisKey + (1 / 2).
 
 	aLow := s associationBefore: lowKey ifAbsent: [ 'home' ].
-	prevKey ifNil: [ self assert: aLow equals: 'home' ] ifNotNil: [
-		self
-			assert: aLow key equals: prevKey;
-			assert: aLow value equals: prevKey printString ].
+	bLow := s associationAtOrBefore: lowKey ifAbsent: [ 'dome' ].
+	prevKey
+		ifNil: [
+			self
+				assert: aLow equals: 'home';
+				assert: bLow equals: 'dome' ]
+		ifNotNil: [
+			self
+				assert: aLow key equals: prevKey;
+				assert: aLow value equals: prevKey printString;
+				assert: bLow equals: aLow ].
 	aThis := s associationBefore: thisKey ifAbsent: [ 'hole' ].
 	prevKey ifNil: [ self assert: aThis equals: 'hole' ] ifNotNil: [
 		self
 			assert: aThis key equals: prevKey;
 			assert: aThis value equals: prevKey printString ].
-
+	bThis := s associationAtOrBefore: thisKey ifAbsent: [ 'dole' ].
 	aHigh := s associationBefore: highKey ifAbsent: [ 'bole' ].
+	bHigh := s associationAtOrBefore: highKey ifAbsent: [ 'bale' ].
 	self
 		assert: aHigh key equals: thisKey;
-		assert: aHigh value equals: thisKey printString
+		assert: aHigh value equals: thisKey printString;
+		assert: bHigh equals: aHigh;
+		assert: bThis equals: aHigh
 ]
 
 { #category : 'support' }
@@ -347,6 +357,7 @@ SkipListTest >> testEmpty [
 		assert: (esk associationAt: 'baz' ifAbsent: [ 42 ]) equals: 42;
 		assert: (esk associationAtOrAfter: 12 ifAbsent: [ 24 ]) equals: 24;
 		assert: (esk associationBefore: 10 ifAbsent: [ 2 ]) equals: 2;
+		assert: (esk associationAtOrBefore: 99 ifAbsent: [ 77 ]) equals: 77;
 		assert: (esk remove: -1 ifAbsent: [ 'who' ]) equals: 'who';
 		assert: (esk removeKey: 0 ifAbsent: [ 'no' ]) equals: 'no'.
 
@@ -581,7 +592,7 @@ SkipListTest >> testSearching [
 			           ifFalse: [ sortedKeys at: i + 1 ].
 		self
 			confirmAssociationAtOrAfterKey: thisKey nextKey: nextKey;
-			confirmAssociationBeforeKey: thisKey prevKey: prevKey ]
+			confirmAssociationAtOrBeforeKey: thisKey prevKey: prevKey ]
 ]
 
 { #category : 'tests' }

@@ -135,6 +135,16 @@ SkipList >> associationAtOrAfter: aKey ifAbsent: aBlock [
 ]
 
 { #category : 'dictionary searching' }
+SkipList >> associationAtOrBefore: aKey ifAbsent: aBlock [
+	"Answer the last entry whose key < aKey"
+
+	| node |
+	node := self searchAtOrBefore: aKey updating: nil.
+	node == self ifTrue: [ ^ aBlock value ].
+	^ node
+]
+
+{ #category : 'dictionary searching' }
 SkipList >> associationBefore: aKey ifAbsent: aBlock [
 	"Answer the last entry whose key < aKey"
 
@@ -537,6 +547,18 @@ SkipList >> searchAtOrAfter: aKey updating: anArray [
 	| node |
 	node := self searchBefore: aKey updating: anArray.
 	^ node next
+]
+
+{ #category : 'private' }
+SkipList >> searchAtOrBefore: aKey updating: anArray [
+	"Answer the last node whose key <= aKey, self if there is no such node"
+
+	| beforeNode nextNode |
+	beforeNode := self searchBefore: aKey updating: anArray.
+	nextNode := beforeNode next.
+	^ (self is: nextNode theNodeFor: aKey)
+		  ifTrue: [ nextNode ]
+		  ifFalse: [ beforeNode ]
 ]
 
 { #category : 'private' }
