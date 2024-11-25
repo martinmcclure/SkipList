@@ -135,13 +135,62 @@ SkipList >> associationAtOrAfter: aKey ifAbsent: aBlock [
 ]
 
 { #category : 'dictionary searching' }
+SkipList >> associationAtOrAfter: aKey ifPresent: presentBlock [
+	"Find my first node with a key >= aKey.
+	If no such node, answer nil. Otherwise,
+	answer the result of evaluating nilary or unary 
+	presentBlock with that node as its argument."
+
+	| node |
+	node := self searchAtOrAfter: aKey updating: nil.
+	^ node ifNotNil: [ presentBlock cull: node ]
+]
+
+{ #category : 'dictionary searching' }
+SkipList >> associationAtOrAfter: aKey ifPresent: presentBlock ifAbsent: absentBlock [
+	"Find my first node with a key >= aKey.
+	If no such node, answer the result of evaluating absentBlock. 
+	Otherwise, answer the result of evaluating nilary or unary 
+	presentBlock with that node as its argument."
+
+	self associationAtOrAfter: aKey ifPresent: [ :node | ^ node ].
+	^ absentBlock value
+]
+
+{ #category : 'dictionary searching' }
 SkipList >> associationAtOrBefore: aKey ifAbsent: aBlock [
-	"Answer the last entry whose key < aKey"
+	"Answer the last entry whose key <= aKey"
 
 	| node |
 	node := self searchAtOrBefore: aKey updating: nil.
 	node == self ifTrue: [ ^ aBlock value ].
 	^ node
+]
+
+{ #category : 'dictionary searching' }
+SkipList >> associationAtOrBefore: aKey ifPresent: presentBlock [
+	"Answer the result of evaluating presentBlock with
+	an argument of my last node whose key <= aKey.
+	If no such node, answer nil.
+	presentBlock may be nilary or unary."
+
+	| node |
+	node := self searchAtOrBefore: aKey updating: nil.
+	node == self ifFalse: [ ^ presentBlock cull: node ].
+	^ nil
+]
+
+{ #category : 'dictionary searching' }
+SkipList >> associationAtOrBefore: aKey ifPresent: presentBlock ifAbsent: absentBlock [
+	"Answer the result of evaluating present block with
+	an argument of my last node whose key <= aKey.
+	If no such node, answer the result of evaluating absentBlock.
+	presentBlock may be nilary or unary, absentBlock must be nilary."
+
+	self
+		associationAtOrBefore: aKey
+		ifPresent: [ :node | ^ presentBlock cull: node ].
+	^ absentBlock value
 ]
 
 { #category : 'dictionary searching' }
@@ -152,6 +201,31 @@ SkipList >> associationBefore: aKey ifAbsent: aBlock [
 	node := self searchBefore: aKey updating: nil.
 	node == self ifTrue: [ ^ aBlock value ].
 	^ node
+]
+
+{ #category : 'dictionary searching' }
+SkipList >> associationBefore: aKey ifPresent: presentBlock [
+	"Answer the result of evaluating presentBlock with
+	an argument of my last node whose key < aKey.
+	If no such node, answer nil.
+	presentBlock may be nilary or unary."
+
+	| node |
+	node := self searchBefore: aKey updating: nil.
+	^ node == self ifFalse: [ presentBlock cull: node ]
+]
+
+{ #category : 'dictionary searching' }
+SkipList >> associationBefore: aKey ifPresent: presentBlock ifAbsent: absentBlock [
+	"Answer the result of evaluating presentBlock with
+	an argument of my last node whose key < aKey.
+	If no such node, answer the result of evaluating absentBlock.
+	presentBlock may be nilary or unary, absentBlock must be nilary."
+
+	self
+		associationBefore: aKey
+		ifPresent: [ :node | ^ presentBlock cull: node ].
+	^ absentBlock value
 ]
 
 { #category : 'dictionary api' }
@@ -336,12 +410,38 @@ SkipList >> first [
 	^ self firstAssociation value
 ]
 
-{ #category : 'dictionary api' }
+{ #category : 'dictionary searching' }
 SkipList >> firstAssociation [
+	"If I am not empty, answer my SkipListNode with the lowest key (per sortBlock, if any)."
 
-	self emptyCheck.
+	self
+		firstAssociationIfPresent: [ :node | ^ node ]
+		ifAbsent: [ self errorEmptyCollection ]
+]
 
-	^ pointers first
+{ #category : 'dictionary searching' }
+SkipList >> firstAssociationIfAbsent: absentBlock [
+	"If I am empty, evaluate nilary or unary absentBlock. 
+	Otherwise, answer my SkipListNode having the lowest key (per sortBlock, if any)."
+
+	^ self
+		  firstAssociationIfPresent: [ :node | node ]
+		  ifAbsent: absentBlock
+]
+
+{ #category : 'dictionary searching' }
+SkipList >> firstAssociationIfPresent: presentBlock [
+	"If I am not empty, evaluate nilary or unary presentBlock with my SkipListNode having the lowest key (per sortBlock, if any)."
+
+	^ pointers first ifNotNil: [ :node | presentBlock cull: node ]
+]
+
+{ #category : 'dictionary searching' }
+SkipList >> firstAssociationIfPresent: presentBlock ifAbsent: absentBlock [
+	"If I am not empty, evaluate nilary or unary presentBlock with my SkipListNode having the lowest key (per sortBlock, if any)."
+
+	self firstAssociationIfPresent: [ :node | ^ presentBlock cull: node ].
+	^ absentBlock value
 ]
 
 { #category : 'private' }

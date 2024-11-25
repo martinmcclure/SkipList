@@ -108,8 +108,12 @@ SkipListTest >> keyRange [
 SkipListTest >> makeSkipList [
 	"Create a random SkipList, and a matching Dictionary for use in a test."
 
-	| size |
-	size := (10 to: 100) atRandom.
+	self makeSkipListOfSize: (10 to: 100) atRandom
+]
+
+{ #category : 'support' }
+SkipListTest >> makeSkipListOfSize: size [
+
 	s := SkipList new: size sortBlock: sortBlock.
 	d := Dictionary new: size.
 	size timesRepeat: [
@@ -127,6 +131,29 @@ SkipListTest >> maxKey [
 	"The largest key used in most tests"
 
 	^ 10000
+]
+
+{ #category : 'performance' }
+SkipListTest >> measureSearchPerformance [
+	"SkipListTest new measureSearchPerformance."
+	"Run 1, ~344 microseconds per lookup."
+	
+	| size reps trials keys overheadTime totalTime results |
+	size := 1024.
+	reps := 10000.
+	trials := 5.
+	results := OrderedCollection new.
+	self makeSkipListOfSize: size.
+	keys := d keys.
+	trials timesRepeat: [
+		overheadTime := [ reps timesRepeat: [ keys do: [ :aKey |  ] ] ]
+			                microsecondsToRun.
+		totalTime := [
+		             reps timesRepeat: [
+			             keys do: [ :aKey | s associationAt: aKey ] ] ]
+			             microsecondsToRun.
+		results add: totalTime - overheadTime ].
+	^ results
 ]
 
 { #category : 'support' }
@@ -353,10 +380,30 @@ SkipListTest >> testEmpty [
 		should: [ esk associationAtOrAfter: 'bar' ] raise: KeyNotFound;
 		should: [ esk remove: 'bat' ] raise: KeyNotFound;
 		should: [ esk removeKey: 'boo' ] raise: KeyNotFound;
+		assert: (esk firstAssociationIfPresent: [ :a | 99 ]) equals: nil;
+		assert: (esk firstAssociationIfAbsent: [ 99 ]) equals: 99;
+		assert: (esk firstAssociationIfPresent: [ 99 ] ifAbsent: [ nil ])
+		equals: nil;
 		assert: (esk at: 'third' ifAbsent: [ 4 ]) equals: 4;
 		assert: (esk associationAt: 'baz' ifAbsent: [ 42 ]) equals: 42;
+		assert: (esk associationAtOrAfter: 14 ifPresent: [ 27 ])
+		equals: nil;
 		assert: (esk associationAtOrAfter: 12 ifAbsent: [ 24 ]) equals: 24;
+		assert:
+			(esk associationAtOrAfter: 7 ifPresent: [ 42 ] ifAbsent: [ 24 ])
+		equals: 24;
+		assert: (esk associationBefore: 10 ifPresent: [ 44 ]) equals: nil;
 		assert: (esk associationBefore: 10 ifAbsent: [ 2 ]) equals: 2;
+		assert:
+			(esk associationBefore: 10 ifPresent: [ :a | 84 ] ifAbsent: [ 2 ])
+		equals: 2;
+		assert: (esk associationAtOrBefore: 10 ifPresent: [ 29 ])
+		equals: nil;
+		assert: (esk
+				 associationAtOrBefore: 10
+				 ifPresent: [ :key | 84 ]
+				 ifAbsent: [ 2 ])
+		equals: 2;
 		assert: (esk associationAtOrBefore: 99 ifAbsent: [ 77 ]) equals: 77;
 		assert: (esk remove: -1 ifAbsent: [ 'who' ]) equals: 'who';
 		assert: (esk removeKey: 0 ifAbsent: [ 'no' ]) equals: 'no'.
