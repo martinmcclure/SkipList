@@ -46,6 +46,14 @@ SkipListTest >> confirmAssociationAtOrAfterKey: thisKey nextKey: nextKey [
 		assert: aLow equals: aThis;
 		assert: aThis key equals: thisKey;
 		assert: aThis value equals: thisKey printString.
+	s
+		associationAtOrAfter: lowKey
+		ifPresent: [ :l | self assert: l equals: aThis ]
+		ifAbsent: [ self fail ].
+	s
+		associationAtOrAfter: thisKey
+		ifPresent: [ :t | self assert: t equals: aThis ]
+		ifAbsent: [ self fail ].
 
 	nextKey
 		ifNil: [
@@ -60,41 +68,97 @@ SkipListTest >> confirmAssociationAtOrAfterKey: thisKey nextKey: nextKey [
 			aHigh := s associationAtOrAfter: highKey ifAbsent: [ 'hone' ].
 			self
 				assert: aHigh key equals: nextKey;
-				assert: aHigh value equals: nextKey printString ]
+				assert: aHigh value equals: nextKey printString.
+			s
+				associationAtOrAfter: highKey
+				ifPresent: [ :h | self assert: h key equals: nextKey ]
+				ifAbsent: [ self fail ] ]
 ]
 
 { #category : 'support' }
 SkipListTest >> confirmAssociationAtOrBeforeKey: thisKey prevKey: prevKey [
 
-	| lowKey highKey aLow bLow aThis bThis aHigh bHigh |
+	| lowKey highKey aLow bLow cLow dLow eLow fLow aThis bThis cThis dThis eThis fThis aHigh bHigh cHigh dHigh eHigh fHigh |
 	lowKey := thisKey - (1 / 2).
 	highKey := thisKey + (1 / 2).
 
 	aLow := s associationBefore: lowKey ifAbsent: [ 'home' ].
-	bLow := s associationAtOrBefore: lowKey ifAbsent: [ 'dome' ].
+	bLow := s associationBefore: lowKey ifPresent: [ 'some' ].
+	cLow := s
+		        associationBefore: lowKey
+		        ifPresent: [ 'sole' ]
+		        ifAbsent: [ 'solo' ].
+	dLow := s associationAtOrBefore: lowKey ifAbsent: [ 'dome' ].
+	eLow := s associationAtOrBefore: lowKey ifPresent: [ 'done' ].
+	fLow := s
+		        associationAtOrBefore: lowKey
+		        ifPresent: [ 'dine' ]
+		        ifAbsent: [ 'pine' ].
 	prevKey
 		ifNil: [
 			self
 				assert: aLow equals: 'home';
-				assert: bLow equals: 'dome' ]
+				assert: bLow equals: nil;
+				assert: cLow equals: 'solo';
+				assert: dLow equals: 'dome';
+				assert: eLow equals: nil;
+				assert: fLow equals: 'pine' ]
 		ifNotNil: [
 			self
 				assert: aLow key equals: prevKey;
 				assert: aLow value equals: prevKey printString;
-				assert: bLow equals: aLow ].
+				assert: bLow equals: 'some';
+				assert: cLow equals: 'sole';
+				assert: dLow equals: aLow;
+				assert: eLow equals: 'done';
+				assert: fLow equals: 'dine' ].
+
 	aThis := s associationBefore: thisKey ifAbsent: [ 'hole' ].
-	prevKey ifNil: [ self assert: aThis equals: 'hole' ] ifNotNil: [
-		self
-			assert: aThis key equals: prevKey;
-			assert: aThis value equals: prevKey printString ].
-	bThis := s associationAtOrBefore: thisKey ifAbsent: [ 'dole' ].
+	bThis := s associationBefore: thisKey ifPresent: [ :a | a key ].
+	cThis := s
+		         associationBefore: thisKey
+		         ifPresent: [ :a | a key ]
+		         ifAbsent: [ 'tong' ].
+	dThis := s associationAtOrBefore: thisKey ifAbsent: [ 'dole' ].
+	eThis := s associationAtOrBefore: thisKey ifPresent: [ :a | a key ].
+	fThis := s
+		         associationAtOrBefore: thisKey
+		         ifPresent: [ :a | a key ]
+		         ifAbsent: [ 'pale' ].
+
+	prevKey
+		ifNil: [
+			self
+				assert: aThis equals: 'hole';
+				assert: bThis equals: nil;
+				assert: cThis equals: 'tong' ]
+		ifNotNil: [
+			self
+				assert: aThis key equals: prevKey;
+				assert: aThis value equals: prevKey printString;
+				assert: bThis equals: prevKey;
+				assert: cThis equals: prevKey;
+				assert: dThis key equals: thisKey;
+				assert: eThis equals: thisKey;
+				assert: fThis equals: thisKey ].
+
 	aHigh := s associationBefore: highKey ifAbsent: [ 'bole' ].
-	bHigh := s associationAtOrBefore: highKey ifAbsent: [ 'bale' ].
+	bHigh := s associationBefore: highKey ifPresent: [ 'tome' ].
+	cHigh := s
+		         associationBefore: highKey
+		         ifPresent: [ 'tame' ]
+		         ifAbsent: [ 'long' ].
+	dHigh := s associationAtOrBefore: highKey ifAbsent: [ 'bale' ].
+	eHigh := s associationAtOrBefore: highKey ifPresent: [ 'dale' ].
+	fHigh := s associationAtOrBefore: highKey ifPresent: [ 'tone' ].
 	self
 		assert: aHigh key equals: thisKey;
 		assert: aHigh value equals: thisKey printString;
-		assert: bHigh equals: aHigh;
-		assert: bThis equals: aHigh
+		assert: bHigh equals: 'tome';
+		assert: cHigh equals: 'tame';
+		assert: dHigh equals: aHigh;
+		assert: eHigh equals: 'dale';
+		assert: fHigh equals: 'tone'
 ]
 
 { #category : 'support' }
