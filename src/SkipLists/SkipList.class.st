@@ -615,14 +615,15 @@ SkipList >> removeKey: aKey [
 SkipList >> removeKey: aKey ifAbsent: aBlock [
 	"Remove the node with the given key and answer its value.
 	If no such node, answer the result of evaluating aBlock."
-	
+
 	| node i s |
 	node := self search: aKey updating: splice.
 	node ifNil: [ ^ aBlock value ].
 	i := 1.
 	[
-	s := splice at: i.
-	i <= level and: [ (s forward: i) == node ] ] whileTrue: [
+	i <= level and: [
+		s := splice at: i.
+		(s forward: i) == node ] ] whileTrue: [
 		s atForward: i put: (node forward: i).
 		i := i + 1 ].
 	numElements := numElements - 1.
@@ -637,7 +638,9 @@ SkipList >> search: aKey updating: array [
 
 	| node |
 	node := self searchAtOrAfter: aKey updating: array.
-	^ (self is: node theNodeFor: aKey) ifTrue: [ node ]
+	^ (self is: node theNodeFor: aKey)
+		  ifTrue: [ node ]
+		  ifFalse: [ nil ]
 ]
 
 { #category : 'private' }

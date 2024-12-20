@@ -22,6 +22,18 @@ SkipListTest class >> mustTestCoverage [
 	^ true
 ]
 
+{ #category : 'support' }
+SkipListTest >> addRandomKey [
+
+	| key value |
+	[
+	key := self keyRange atRandom.
+	d includesKey: key ] whileTrue.
+	value := key printString.
+	d at: key put: value.
+	^ s at: key put: value
+]
+
 { #category : 'coverage' }
 SkipListTest >> classToBeTested [
 
@@ -180,14 +192,7 @@ SkipListTest >> makeSkipListOfSize: size [
 
 	s := SkipList new: size sortBlock: sortBlock.
 	d := Dictionary new: size.
-	size timesRepeat: [
-		| key value |
-		[
-		key := self keyRange atRandom.
-		d includesKey: key ] whileTrue.
-		value := key printString.
-		d at: key put: value.
-		s at: key put: value ]
+	size timesRepeat: [ self addRandomKey ]
 ]
 
 { #category : 'support' }
@@ -253,7 +258,8 @@ SkipListTest >> setUp [
 	super setUp.
 	self makeSkipList.
 	self assert: s sortBlock identicalTo: nil.
-	s audit
+	s audit.
+	self validateContents
 ]
 
 { #category : 'support' }
@@ -660,16 +666,18 @@ SkipListTest >> testRandomLevel [
 
 { #category : 'tests' }
 SkipListTest >> testRemove [
-	"tests size after removing element"
+	"Grow to max level first"
 
-	"self run:#testRemove"
-	| sk |
-	sk := SkipList new.
-	sk add: 1.
-	self assert: sk size equals: 1.
-	self should: [ sk remove: 2 ] raise: KeyNotFound.
-	sk remove: 1.
-	self assert: sk size equals: 0
+	[ s level < s maxLevel ] whileTrue: [
+		self addRandomKey.
+		s audit.
+		self validateContents ].
+	self assert: s level equals: s maxLevel.
+	d copy keysAndValuesDo: [ :k :v |
+		self assert: (s removeKey: k ifAbsent: [ self fail ]) equals: v.
+		d removeKey: k.
+		s audit.
+		self validateContents ]
 ]
 
 { #category : 'tests' }
@@ -713,4 +721,20 @@ SkipListTest >> testSortBlock [
 	self makeSkipList.
 	self assert: s sortBlock equals: sortBlock.
 	"s will be audited in tearDown"
+]
+
+{ #category : 'support' }
+SkipListTest >> validateContents [
+
+	| prevKey |
+	"The size and contents of SkipList s and Dictionary d should match"
+	self assert: s size equals: d size.
+	d keysAndValuesDo: [ :k :v |
+		self assert: (s at: k ifAbsent: [ self fail ]) equals: v ].
+
+	"The keys of s should be sorted"
+	prevKey := self minKey - 1.
+	s keysDo: [ :k |
+		self assert: k > prevKey.
+		prevKey := k ]
 ]
