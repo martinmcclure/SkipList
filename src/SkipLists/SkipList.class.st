@@ -256,6 +256,15 @@ SkipList >> at: aKey ifAbsent: aBlock [
 ]
 
 { #category : 'dictionary api' }
+SkipList >> at: key ifAbsentPut: aBlock [
+	"Look up the value for the given key.
+	If I do not contain key, add a key->value pair, key to the result of evaluating aBlock.
+	Answer the existing or new value."
+
+	^ self at: key ifAbsent: [ self at: key put: aBlock value ]
+]
+
+{ #category : 'dictionary api' }
 SkipList >> at: key put: value [
 	"Associate key with value. This adds a key, or replaces the value of an existing key."
 
