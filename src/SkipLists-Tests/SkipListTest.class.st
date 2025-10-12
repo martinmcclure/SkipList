@@ -352,6 +352,28 @@ SkipListTest >> testAt [
 ]
 
 { #category : 'tests' }
+SkipListTest >> testAtIfAbsentPut [
+	"self run: #testAtPutAlreadyPresent"
+
+	"self debug: #testAtPutAlreadyPresent"
+
+	| sk |
+	sk := SkipList new.
+	sk at: 11 put: '111111'.
+	sk at: 3 put: '3333'.
+	sk at: 7 put: '77777'.
+	sk at: 3 put: '666'.
+
+	self
+		assert: (sk at: 7) equals: '77777';
+		assert: (sk at: 7 ifAbsentPut: [ 'boo!' ]) equals: '77777';
+		deny: (sk includesKey: 1);
+		assert: (sk at: 1 ifAbsentPut: [ '11111' ]) equals: '11111';
+		assert: (sk includesKey: 1);
+		assert: (sk at: 1) equals: '11111'
+]
+
+{ #category : 'tests' }
 SkipListTest >> testAtPutAlreadyPresent [
 	"self run: #testAtPutAlreadyPresent"
 
