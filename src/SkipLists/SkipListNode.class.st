@@ -14,24 +14,8 @@ Class {
 }
 
 { #category : 'instance creation' }
-SkipListNode class >> key: key value: value level: maxLevel [ 
-        ^ (super key: key value: value) initialize: maxLevel
-]
-
-{ #category : 'instance creation' }
-SkipListNode class >> new: maxLevel [
-	^ super new initialize: maxLevel
-]
-
-{ #category : 'instance creation' }
-SkipListNode class >> on: element level: maxLevel [ 
-        ^ self key: element value: element level: maxLevel
-
-]
-
-{ #category : 'instance creation' }
-SkipListNode class >> tailOfLevel: n [
-	^ self on: nil level: n
+SkipListNode class >> key: key value: value level: level [ 
+        ^ (super key: key value: value) initialize: level
 ]
 
 { #category : 'accessing' }
@@ -45,8 +29,8 @@ SkipListNode >> forward: i [
 ]
 
 { #category : 'initialization' }
-SkipListNode >> initialize: maxLevel [
-	pointers := Array new: maxLevel
+SkipListNode >> initialize: level [
+	pointers := Array new: level
 ]
 
 { #category : 'accessing' }
